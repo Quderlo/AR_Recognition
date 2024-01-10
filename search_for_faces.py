@@ -1,29 +1,27 @@
 # search_for_faces.py
 import cv2
-import dlib
 import pickle
 import struct
-from settings import SHAPE_PREDICTOR_PATH
 
-# Загрузка предобученной модели dlib для обнаружения лиц
-face_detector = dlib.get_frontal_face_detector()
-shape_predictor = dlib.shape_predictor(SHAPE_PREDICTOR_PATH)
+import dlib
+
+import settings
 
 
 def detect_faces(frame):
     # Проверка на пустое изображение перед обработкой
     if frame is None or frame.size == 0:
         print("Ошибка: Изображение пустое.")
-        return []
+        return None, []
 
     # Преобразование кадра в оттенки серого (для улучшения производительности)
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Обнаружение лиц на кадре
-    faces = face_detector(gray_frame)
+    faces = settings.face_detector(gray_frame)
 
     # Возвращение координат обнаруженных лиц
-    return [(face.left(), face.top(), face.right(), face.bottom()) for face in faces]
+    return gray_frame, [(face.left(), face.top(), face.right(), face.bottom()) for face in faces]
 
 
 def extract_faces(frame, faces):
@@ -35,11 +33,23 @@ def extract_faces(frame, faces):
         # Добавьте проверку на пустое изображение перед сохранением
         if not face.size == 0:
             extracted_faces.append(face)
-            cv2.imwrite(f"serverImage/extracted_face_{i}.jpg", face)
         else:
             print(f"Изображение лица {i} пустое, не сохранено.")
 
     return extracted_faces
+
+
+def encode_and_extract_face(frame, gray_frame, faces):
+    encodings = []
+
+    for i, (left, top, right, bottom) in enumerate(faces):
+        face = frame[top:bottom, left:right]
+
+        if not face.size == 0:
+            landmarks = settings.shape_predictor(gray_frame, dlib.rectangle(left, top, right, bottom))
+            encoding = settings.face_recognizer.compute_face_descriptor(image, landmarks)
+        else:
+            print(f"Изображение лица {i} пустое, не сохранено.")
 
 
 def handle_client(client_socket):
@@ -60,14 +70,12 @@ def handle_client(client_socket):
             frame = pickle.loads(data)
 
             # Обнаружение лиц на изображении
-            faces = detect_faces(frame)
-
-            # Отображение обнаруженных лиц на кадре (для проверки)
-            for face in faces:
-                cv2.rectangle(frame, (face[0], face[1]), (face[2], face[3]), (0, 255, 0), 2)
+            gray_frame, faces = detect_faces(frame)
 
             # Извлечение обрезанных лиц и сохранение их
             extracted_faces = extract_faces(frame, faces)
+
+            encode_and_extract_face(frame, gray_frame, faces)
 
             # Сериализация обрезанных лиц и отправка клиенту
             extracted_faces_data = pickle.dumps(extracted_faces)

@@ -13,7 +13,7 @@ try:
     sock.connect((host, port))
 
     # Захват изображения с камеры с помощью OpenCV
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     while True:
         # Чтение кадра
@@ -43,10 +43,10 @@ try:
 
         # Отображение изображений с обрезанными лицами
         for i, face in enumerate(extracted_faces):
-            cv2.imshow(f"Face {i}", face)
+            cv2.imshow(f"Client. Received Face from server {i}", face)
 
         # Небольшая пауза между кадрами
-        cv2.waitKey(10)
+        cv2.waitKey(0)
 
 except KeyboardInterrupt:
     print("Клиент завершил работу.")
