@@ -11,6 +11,11 @@ shape_predictor = dlib.shape_predictor(SHAPE_PREDICTOR_PATH)
 
 
 def detect_faces(frame):
+    # Проверка на пустое изображение перед обработкой
+    if frame is None or frame.size == 0:
+        print("Ошибка: Изображение пустое.")
+        return []
+
     # Преобразование кадра в оттенки серого (для улучшения производительности)
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -23,10 +28,16 @@ def detect_faces(frame):
 
 def extract_faces(frame, faces):
     extracted_faces = []
+
     for i, (left, top, right, bottom) in enumerate(faces):
         face = frame[top:bottom, left:right]
-        extracted_faces.append(face)
-        cv2.imwrite(f"serverImage/extracted_face_{i}.jpg", face)
+
+        # Добавьте проверку на пустое изображение перед сохранением
+        if not face.size == 0:
+            extracted_faces.append(face)
+            cv2.imwrite(f"serverImage/extracted_face_{i}.jpg", face)
+        else:
+            print(f"Изображение лица {i} пустое, не сохранено.")
 
     return extracted_faces
 

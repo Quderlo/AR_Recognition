@@ -1,3 +1,4 @@
+# server.py
 import socket
 from threading import Thread
 from search_for_faces import handle_client

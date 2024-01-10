@@ -1,3 +1,4 @@
+# client.py
 import socket
 import cv2
 import pickle
@@ -12,7 +13,7 @@ try:
     sock.connect((host, port))
 
     # Захват изображения с камеры с помощью OpenCV
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     while True:
         # Чтение кадра
