@@ -1,60 +1,54 @@
-# client.py
-import socket
-import cv2
 import pickle
+import socket
+
+# Локальный IP-адрес и порт сервера
 import struct
+import time
 
-host = '127.0.0.1'
-port = 12345
+import cv2
 
-try:
-    # Создание нового клиентского сокета
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((host, port))
+server_host = '127.0.0.1'  # Локальный IP-адрес сервера
+server_port = 12345  # Порт сервера
+running = True
+data = None
 
-    # Захват изображения с камеры с помощью OpenCV
-    cap = cv2.VideoCapture(0)
+# Создаем сокет клиента
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    while True:
-        # Чтение кадра
-        ret, frame = cap.read()
+# Подключаемся к серверу
+client_socket.connect((server_host, server_port))
 
-        # Сериализация изображения в байты
-        data = pickle.dumps(frame)
+# Получаем локальный IP-адрес и порт клиента
+local_ip = client_socket.getsockname()[0]
+local_port = client_socket.getsockname()[1]
+
+print(f"Подключились к серверу {server_host} через {local_ip}:{local_port}")
+
+cap = cv2.VideoCapture(0)
+
+while running:
+    # Проверяем, успешно ли произошел захват изображения
+    result, image = cap.read()
+    cv2.waitKey(10)
+
+    if not result:
+        print("Не удалось захватить изображение с веб-камеры.")
+    else:
+        print("Сериализация изображения")
+        data = pickle.dumps(image)
 
         # Отправка размера данных перед отправкой самих данных
-        sock.sendall(struct.pack("Q", len(data)))
+        client_socket.sendall(struct.pack("Q", len(data)))
 
         # Отправка данных
-        sock.sendall(data)
+        client_socket.sendall(data)
 
-        # Получение размера ответа от сервера
-        response_size = struct.unpack("Q", sock.recv(struct.calcsize("Q")))[0]
+        response = client_socket.recv(1024)
+        print(f"Ответ сервера {response}")
 
-        # Получение ответа от сервера
-        response_data = b""
-        while len(response_data) < response_size:
-            packet = sock.recv(4 * 1024)  # 4 КБ чанки
-            if not packet:
-                break
-            response_data += packet
+        if response != b"200":
+            running = False
 
-        extracted_faces = pickle.loads(response_data)
 
-        # Отображение изображений с обрезанными лицами
-        for i, face in enumerate(extracted_faces):
-            cv2.imshow(f"Client. Received Face from server {i}", face)
-
-        # Небольшая пауза между кадрами
-        cv2.waitKey(0)
-
-except KeyboardInterrupt:
-    print("Клиент завершил работу.")
-
-except Exception as e:
-    print(f"Произошла ошибка: {e}")
-
-finally:
-    # Закрытие камеры и клиентского сокета
-    cap.release()
-    sock.close()
+cap.release()
+client_socket.close()
