@@ -29,7 +29,7 @@ cap = cv2.VideoCapture(0)
 while running:
     # Проверяем, успешно ли произошел захват изображения
     result, image = cap.read()
-    cv2.waitKey(10)
+    cv2.waitKey(3000)
 
     if not result:
         print("Не удалось захватить изображение с веб-камеры.")

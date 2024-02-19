@@ -2,6 +2,9 @@ import pickle
 import socket
 from datetime import datetime as dt
 import cv2
+import numpy as np
+
+import settings
 
 from close_socket import close_server_soket
 import struct
@@ -46,8 +49,22 @@ while running:
             print(f"Error: {e}")
 
         image = pickle.loads(data)
+        faces = settings.face_detector(image, 3)
+        face_encoding = np.array
+        print(face_encoding)
 
-        cv2.imwrite(f"{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}.jpg", image)
+        for i, face in enumerate(faces):
+            x1, y1, x2, y2 = face.left(), face.top(), face.right(), face.bottom()
+
+            cropped_face = image[y1:y2, x1:x2]
+
+            cv2.imwrite(f"photo/{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}_face_{i}.jpg", cropped_face)
+
+            landmarks = settings.shape_predictor(image, face)
+            face_encoding = np.array(settings.face_recognizer.compute_face_descriptor(image, landmarks))
+            print("after", face_encoding)
+
+        # cv2.imwrite(f"photo/{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}.jpg", image)
 
         try:
             # Отправляем клиенту код 200
@@ -61,6 +78,3 @@ while running:
     except Exception as e:
         print(f"Error: {e}")
         running = close_server_soket(server_socket, client_socket)
-
-
-
