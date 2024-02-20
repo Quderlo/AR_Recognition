@@ -6,6 +6,7 @@ import struct
 import time
 
 import cv2
+import numpy as np
 
 server_host = '127.0.0.1'  # Локальный IP-адрес сервера
 server_port = 12345  # Порт сервера
@@ -43,12 +44,49 @@ while running:
         # Отправка данных
         client_socket.sendall(data)
 
-        response = client_socket.recv(1024)
-        print(f"Ответ сервера {response}")
+        # Получаем размер данных от сервера
+        data_size = struct.unpack("Q", client_socket.recv(struct.calcsize("Q")))[0]
 
-        if response != b"200":
-            running = False
+        # Получаем данные от сервера
+        data_from_server = b""
+        while len(data_from_server) < data_size:
+            packet = client_socket.recv(4 * 1024)  # Получаем данные пакетами по 4 КБ
+            if not packet:
+                break
+            data_from_server += packet
 
+        try:
+            if data_from_server:
+                # Десериализуем данные
+                response_data = pickle.loads(data_from_server)
+
+                # Проверяем, есть ли данные в response_data
+                if response_data:
+                    for user in response_data:
+                        # Если данные есть, выводим их
+                        print("Данные из базы данных:")
+                        print(f"Фамилия: {user[0]}")
+                        print(f"Имя: {user[1]}")
+                        print(f"Отчество: {user[2]}")
+                        print(f"Университет: {user[3]}")
+
+                        # Преобразование изображения из байтовой строки в массив numpy
+                        image_bytes = user[4]
+                        image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+
+                        # Декодирование изображения
+                        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+                        # Отображение изображения
+                        cv2.imshow("Image", image)
+                        cv2.waitKey(0)
+                        cv2.destroyAllWindows()
+                else:
+                    print("Нет данных в response_data")
+            else:
+                print("Нет данных в data_from_server")
+        except Exception as e:
+            print(f"Ошибка при десериализации данных. {e}")
 
 cap.release()
 client_socket.close()

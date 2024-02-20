@@ -3,7 +3,7 @@ import socket
 from datetime import datetime as dt
 import cv2
 import numpy as np
-
+from get_compare_data import get_users_data
 import settings
 
 from close_socket import close_server_soket
@@ -50,8 +50,7 @@ while running:
 
         image = pickle.loads(data)
         faces = settings.face_detector(image, 3)
-        face_encoding = np.array
-        print(face_encoding)
+        face_descriptors = []
 
         for i, face in enumerate(faces):
             x1, y1, x2, y2 = face.left(), face.top(), face.right(), face.bottom()
@@ -61,14 +60,21 @@ while running:
             cv2.imwrite(f"photo/{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}_face_{i}.jpg", cropped_face)
 
             landmarks = settings.shape_predictor(image, face)
-            face_encoding = np.array(settings.face_recognizer.compute_face_descriptor(image, landmarks))
-            print("after", face_encoding)
+            face_descriptors.append(np.array(settings.face_recognizer.compute_face_descriptor(image, landmarks)))
 
-        # cv2.imwrite(f"photo/{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}.jpg", image)
+        # Получение данных о пользователях
+        user_data = get_users_data(face_descriptors)
 
+        # Сериализация данных
+        serialized_data = pickle.dumps(user_data)
+
+        # Отправка размера данных перед отправкой самих данных
+        client_socket.sendall(struct.pack("Q", len(serialized_data)))
+
+        # Отправка данных на клиент
         try:
-            # Отправляем клиенту код 200
-            client_socket.sendall(b"200")
+            # Отправляем данные на клиент
+            client_socket.sendall(serialized_data)
         except Exception as e:
             print(f"Error: {e}")
 
