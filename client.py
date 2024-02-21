@@ -3,7 +3,6 @@ import socket
 
 # Локальный IP-адрес и порт сервера
 import struct
-import time
 
 import cv2
 import numpy as np
@@ -32,8 +31,19 @@ while running:
     result, image = cap.read()
     cv2.waitKey(3000)
 
+    # Отправляем запрос на сервер о готовности принять данные
+    client_socket.sendall(b"READY")
+
+    # Ждем подтверждения от сервера
+    response = client_socket.recv(1024)
+
+    if response != b"READY":
+        print("Ошибка: сервер не готов принять данные")
+        continue
+
     if not result:
         print("Не удалось захватить изображение с веб-камеры.")
+        continue
     else:
         print("Сериализация изображения")
         data = pickle.dumps(image)
@@ -44,6 +54,7 @@ while running:
         # Отправка данных
         client_socket.sendall(data)
 
+    try:
         # Получаем размер данных от сервера
         data_size = struct.unpack("Q", client_socket.recv(struct.calcsize("Q")))[0]
 
@@ -54,39 +65,42 @@ while running:
             if not packet:
                 break
             data_from_server += packet
+    except struct.error as se:
+        print(f"Ошибка при получении данных с сервера. {se}")
+        data_from_server = []
 
-        try:
-            if data_from_server:
-                # Десериализуем данные
-                response_data = pickle.loads(data_from_server)
+    try:
+        if data_from_server:
+            # Десериализуем данные
+            response_data = pickle.loads(data_from_server)
 
-                # Проверяем, есть ли данные в response_data
-                if response_data:
-                    for user in response_data:
-                        # Если данные есть, выводим их
-                        print("Данные из базы данных:")
-                        print(f"Фамилия: {user[0]}")
-                        print(f"Имя: {user[1]}")
-                        print(f"Отчество: {user[2]}")
-                        print(f"Университет: {user[3]}")
+            # Проверяем, есть ли данные в response_data
+            if response_data:
+                for user in response_data:
+                    # Если данные есть, выводим их
+                    print("Данные из базы данных:")
+                    print(f"Фамилия: {user[0]}")
+                    print(f"Имя: {user[1]}")
+                    print(f"Отчество: {user[2]}")
+                    print(f"Университет: {user[3]}")
 
-                        # Преобразование изображения из байтовой строки в массив numpy
-                        image_bytes = user[4]
-                        image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+                    # Преобразование изображения из байтовой строки в массив numpy
+                    image_bytes = user[4]
+                    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
 
-                        # Декодирование изображения
-                        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+                    # Декодирование изображения
+                    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
-                        # Отображение изображения
-                        cv2.imshow("Image", image)
-                        cv2.waitKey(0)
-                        cv2.destroyAllWindows()
-                else:
-                    print("Нет данных в response_data")
+                    # Отображение изображения
+                    # cv2.imshow("Image", image)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
             else:
-                print("Нет данных в data_from_server")
-        except Exception as e:
-            print(f"Ошибка при десериализации данных. {e}")
+                print("Нет данных в response_data")
+        else:
+            print("Нет данных в data_from_server")
+    except Exception as e:
+        print(f"Ошибка при десериализации данных. {e}")
 
 cap.release()
 client_socket.close()

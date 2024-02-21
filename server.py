@@ -32,6 +32,14 @@ print("Подключился клиент с IP:", addr[0])
 
 while running:
     try:
+        request = client_socket.recv(1024)
+        if request != b"READY":
+            print("Ошибка: неверный запрос от клиента")
+            continue
+
+        # Отправляем подтверждение клиенту
+        client_socket.sendall(b"READY")
+
         data_size = struct.unpack("Q", client_socket.recv(struct.calcsize("Q")))[0]
 
         try:
@@ -50,6 +58,7 @@ while running:
 
         image = pickle.loads(data)
         faces = settings.face_detector(image, 3)
+
         face_descriptors = []
 
         for i, face in enumerate(faces):
@@ -57,7 +66,7 @@ while running:
 
             cropped_face = image[y1:y2, x1:x2]
 
-            cv2.imwrite(f"photo/{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}_face_{i}.jpg", cropped_face)
+            # cv2.imwrite(f"photo/{dt.now().strftime('%Y-%m-%d_%H-%M-%S')}_face_{i}.jpg", cropped_face)
 
             landmarks = settings.shape_predictor(image, face)
             face_descriptors.append(np.array(settings.face_recognizer.compute_face_descriptor(image, landmarks)))
